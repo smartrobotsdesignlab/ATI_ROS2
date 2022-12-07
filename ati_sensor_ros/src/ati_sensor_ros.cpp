@@ -55,7 +55,6 @@ namespace ati_sensor
             ati_sensor_msg.torque.x = ati_sensor_->get_tx();
             ati_sensor_msg.torque.y = ati_sensor_->get_ty();
             ati_sensor_msg.torque.z = ati_sensor_->get_tz();
-            RCLCPP_INFO(this->get_logger(),"data is: %f", ati_sensor_msg.force.x);
 
             ati_sensor_pub_->publish(ati_sensor_msg);
             auto end_time = std::chrono::high_resolution_clock::now();
