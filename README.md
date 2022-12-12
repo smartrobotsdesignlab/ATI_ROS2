@@ -12,7 +12,7 @@ To use it, make sure you have [Docker](https://docs.docker.com/get-docker/) inst
 
 ```shell
 $ docker build --tag ati_sensor:humble --file .docker/Dockerfile .
-$ docker run -it --network host ati_sensor:humble
+$ docker run -it --network host --rm ati_sensor:humble
 ```
 
 ## Run the ATI sensor
