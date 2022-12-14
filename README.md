@@ -4,6 +4,14 @@ To use it, make sure you have [Docker](https://docs.docker.com/get-docker/) inst
 
 **Be caution:** Don't install Docker Desktop. Please install Docker Engine!
 
+## Clone this repository
+
+```shell
+$ git clone https://github.com/smartrobotsdesignlab/ATI_ROS2.git
+
+cd ati_sensor_ros
+```
+
 ## Clone SOEM by git submodule
 
 `git submodule update`
