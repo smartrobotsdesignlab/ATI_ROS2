@@ -23,7 +23,7 @@ namespace ati_sensor
             RCLCPP_ERROR(this->get_logger(), "Failed to get update_rate parameter");
         }
 
-        ati_sensor_pub_ = this->create_publisher<geometry_msgs::msg::Wrench>("ati_sensor", 10);
+        ati_sensor_pub_ = this->create_publisher<geometry_msgs::msg::WrenchStamped>("ft_sensor_wrench", 10);
         RCLCPP_INFO(this->get_logger(),"ATI Sensor ROS Node Initialized");
     }
 
@@ -42,19 +42,22 @@ namespace ati_sensor
     void ati_sensor_ros::run()
     {
         // ros loop
-        auto ati_sensor_msg = geometry_msgs::msg::Wrench();
-        auto loop_rate = std::chrono::milliseconds(1000 / update_rate_);
+        geometry_msgs::msg::WrenchStamped ati_sensor_msg = geometry_msgs::msg::WrenchStamped();
+
+        ati_sensor_msg.header.frame_id = "ati_sensor";
+        auto loop_rate = std::chrono::milliseconds(1000/ update_rate_);
         RCLCPP_INFO(this->get_logger(),"ATI Sensor ROS Node Running");
         while (rclcpp::ok())
         {
             auto start_time = std::chrono::high_resolution_clock::now();
             ati_sensor_->ati_write();
-            ati_sensor_msg.force.x = ati_sensor_->get_fx();
-            ati_sensor_msg.force.y = ati_sensor_->get_fy();
-            ati_sensor_msg.force.z = ati_sensor_->get_fz();
-            ati_sensor_msg.torque.x = ati_sensor_->get_tx();
-            ati_sensor_msg.torque.y = ati_sensor_->get_ty();
-            ati_sensor_msg.torque.z = ati_sensor_->get_tz();
+            ati_sensor_msg.header.stamp = this->now();
+            ati_sensor_msg.wrench.force.x = ati_sensor_->get_fx();
+            ati_sensor_msg.wrench.force.y = ati_sensor_->get_fy();
+            ati_sensor_msg.wrench.force.z = ati_sensor_->get_fz();
+            ati_sensor_msg.wrench.torque.x = ati_sensor_->get_tx();
+            ati_sensor_msg.wrench.torque.y = ati_sensor_->get_ty();
+            ati_sensor_msg.wrench.torque.z = ati_sensor_->get_tz();
 
             ati_sensor_pub_->publish(ati_sensor_msg);
             auto end_time = std::chrono::high_resolution_clock::now();

@@ -12,7 +12,7 @@
 #include <thread>
 // ros include
 #include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/wrench.hpp>
+#include <geometry_msgs/msg/wrench_stamped.hpp>
 
 namespace ati_sensor
 {
@@ -30,7 +30,7 @@ namespace ati_sensor
 
         /* variables */
         // ros node
-        rclcpp::Publisher<geometry_msgs::msg::Wrench>::SharedPtr ati_sensor_pub_;
+        rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr ati_sensor_pub_;
         // sensor variable
         std::string ether_name_;
         std::shared_ptr<ati_sensor::ati_sensor_lib> ati_sensor_;
