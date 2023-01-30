@@ -14,7 +14,7 @@ cd ati_sensor_ros
 
 ## Clone SOEM by git submodule
 
-`git submodule update`
+`git submodule update --init --recursive`
 
 ## Build the Docker File
 
