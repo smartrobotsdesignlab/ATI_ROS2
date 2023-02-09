@@ -9,9 +9,8 @@ bool ati_sensor_lib::ati_setup(std::string ether_name)
   pdo_transfer_active_ = false;
   
   // Initial control code && I/O map config
-  control_code_ = 0x00003310;
-  int write_size = 4;
-  ec_SDOwrite(1, 0x7010, 0x01, FALSE, write_size, &control_code_, EC_TIMEOUTRXM);
+  control_code_ = 0x1050;
+  ec_SDOwrite(1, 0x7010, 0x01, FALSE, sizeof(control_code_), &control_code_, EC_TIMEOUTRXM);
   
 
   /* initialise SOEM, bind socket to ifname */
@@ -90,6 +89,8 @@ bool ati_sensor_lib::ati_setup(std::string ether_name)
                   "ethercat_interface ethercat_interface))"
                     << COUT_RESET << std::endl;
   }
+
+
   return false;
 }
 
@@ -101,6 +102,12 @@ void ati_sensor_lib::show_ati_infomation()
   ec_SDOread(1, 0x2021, 0x30, FALSE, &rdl, &torque_unit, EC_TIMEOUTRXM);
   std::cout << "Force unit: " << FORCE_UNITS[force_unit] << std::endl;
   std::cout << "Torque unit: " << TORQUE_UNITS[torque_unit] << std::endl;
+
+  // send sdo once
+  ec_slave[0].outputs[0] = control_code_ & 0x00FF;
+  ec_slave[0].outputs[1] = (control_code_ >> 4 )& 0x00FF;
+  ec_slave[0].outputs[2] = (control_code_ >> 8 )& 0x00FF;
+  ec_slave[0].outputs[3] = (control_code_ >> 12 )& 0x00FF;
 }
 
 void ati_sensor_lib::set_bias(bool cmd)
