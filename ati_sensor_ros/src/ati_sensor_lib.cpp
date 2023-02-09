@@ -7,7 +7,12 @@ bool ati_sensor_lib::ati_setup(std::string ether_name)
 {
   ether_name_ = ether_name;
   pdo_transfer_active_ = false;
-
+  
+  // Initial control code && I/O map config
+  control_code_ = 0x00003310;
+  int write_size = 4;
+  ec_SDOwrite(1, 0x7010, 0x01, FALSE, write_size, &control_code_, EC_TIMEOUTRXM);
+  
 
   /* initialise SOEM, bind socket to ifname */
   if (ec_init(ether_name_.c_str()))
@@ -25,15 +30,9 @@ bool ati_sensor_lib::ati_setup(std::string ether_name)
             fprintf(stderr, "Could not set EC_STATE_PRE_OP\n");
             return false;
         }
-        control_code_ = 0x351;
-        ec_SDOwrite(1, 0x7010, 0x01, FALSE, sizeof(control_code_), &control_code_, EC_TIMEOUTRXM);
-        // zero_reset();
-        // ec_SDOread(1, 0x6000, 0x01, TRUE, &rdl, &FT_data_, EC_TIMEOUTRXM);
 
         ec_config_map(IOmap_);
         ec_configdc();
-        int FT_data[6];
-        int rdl = 4 *6; // 4 bytes per int * 6 ints
 
         std::cout << "Slaves mapped, state to SAFE_OP." << std::endl;
         /* wait for all slaves to reach SAFE_OP state */
@@ -94,141 +93,110 @@ bool ati_sensor_lib::ati_setup(std::string ether_name)
   return false;
 }
 
-void ati_sensor_lib::zero_reset()
+void ati_sensor_lib::show_ati_infomation()
 {
-  write_service_ = true;
-  uint8_t set_bias = 0;
-  uint8_t is_zero = 0;
-
-  static int count_ = 0;
-
-  int write_size = 4;
-
-  size_t bias_set_bit = 0;
-  size_t bias_clear_bit = 2;
-  size_t filter_bit = 4;
-  
-  size_t calibration_bit = 8;
-  size_t rate_bit = 12;
-
-
-  switch (count_)
-  {
-  case 0:
-    control_code_ = 0x00000000;
-    count_++;
-    break;
-  default:
-    return;
-    break;
-  }
-  
-
-  control_code_ |= (set_bias << bias_set_bit);
-  control_code_ |= (is_zero << bias_clear_bit);
-  control_code_ |= (5 << filter_bit);
-  control_code_ |= (3 << calibration_bit);
-  control_code_ |= (1 << rate_bit);
-
-  // std::cout << "command code is: " << std::hex << control_code_ << std::endl;
-
-  /* request SAFE_OP state for all slaves */
-  // ec_writestate(0);
-  // /* wait for all slaves to reach state */
-  // ec_statecheck(0, EC_STATE_SAFE_OP,  EC_TIMEOUTSTATE);
-  // ec_slave[0].state = EC_STATE_PRE_OP;
-  // /* request SAFE_OP state for all slaves */
-  // ec_writestate(0);
-  // /* wait for all slaves to reach state */
-  // ec_statecheck(0, EC_STATE_PRE_OP,  EC_TIMEOUTSTATE);
-  // if (( ec_slavecount >= 1 ) &&
-  //     (strcmp(ec_slave[1].name,"E/BOX") == 0))
-  // {
-  //   // restore PDO to standard mode
-  //   // this can only be done is pre-op state
-      ec_SDOwrite(1, 0x7010, 0x01, FALSE, write_size, &control_code_, EC_TIMEOUTRXM);
-  // }
-  // /* request SAFE_OP state for all slaves */
-  // ec_writestate(1);
-  // /* wait for all slaves to reach state */
-  // ec_statecheck(0, EC_STATE_OPERATIONAL,  EC_TIMEOUTSTATE);
-  // write_service_ = false;
+  uint8_t force_unit = 0, torque_unit = 0;
+  int rdl;
+  ec_SDOread(1, 0x2021, 0x2f, FALSE, &rdl, &force_unit, EC_TIMEOUTRXM);
+  ec_SDOread(1, 0x2021, 0x30, FALSE, &rdl, &torque_unit, EC_TIMEOUTRXM);
+  std::cout << "Force unit: " << FORCE_UNITS[force_unit] << std::endl;
+  std::cout << "Torque unit: " << TORQUE_UNITS[torque_unit] << std::endl;
 }
 
+void ati_sensor_lib::set_bias(bool cmd)
+{
+  if (cmd)
+  {
+    control_code_ |= 1UL << 0;
+  }
+  else
+  {
+    control_code_ &= ~(1UL << 0);
+  }
+  
+  ec_slave[0].outputs[0] = control_code_ & 0x00FF;
+  ec_slave[0].outputs[1] = (control_code_ >> 4 )& 0x00FF;
+  ec_slave[0].outputs[2] = (control_code_ >> 8 )& 0x00FF;
+  ec_slave[0].outputs[3] = (control_code_ >> 12 )& 0x00FF;
+
+}
+
+void ati_sensor_lib::clear_bias(bool cmd)
+{
+  if (cmd)
+  {
+    control_code_ |= 1UL << 2;
+  }
+  else
+  {
+    control_code_ &= ~(1UL << 2);
+  }
+  
+  ec_slave[0].outputs[0] = control_code_ & 0x00FF;
+  ec_slave[0].outputs[1] = (control_code_ >> 4 )& 0x00FF;
+  ec_slave[0].outputs[2] = (control_code_ >> 8 )& 0x00FF;
+  ec_slave[0].outputs[3] = (control_code_ >> 12 )& 0x00FF;
+}
 
 int* ati_sensor_lib::ati_read()
-{
-  // int FT_data[6];
-  // int rdl = 4 *6; // 4 bytes per int * 6 ints
-  // ec_SDOread(1, 0x6000, 0x01, TRUE, &rdl, &FT_data, EC_TIMEOUTRXM);
-          
-  // std::copy(std::begin(FT_data), std::end(FT_data), std::begin(FT_data_));
-  
+{  
   return FT_data_;
 }
 
 void ati_sensor_lib::ati_write()
 {
-    // int FT_data[6];
     int rdl = 4 *6; // 4 bytes per int * 6 ints
-    static int count = 0;
-
-      // if (count < 1)
-      // {
-        
-      //   ec_slave[1].state = EC_STATE_OPERATIONAL;
-      //   ec_writestate(0);
-      //   ec_statecheck(0, EC_STATE_OPERATIONAL, 50000);
-      //   count ++;
-      // }
-      zero_reset();
-      
-      if (pdo_transfer_active_)
-      {            
-        // zero_reset();  
-        // wkc_ = ec_send_processdata();
-        // wkc_ = ec_receive_processdata(EC_TIMEOUTRET);
-        ec_SDOread(1, 0x6000, 0x01, TRUE, &rdl, &FT_data_, EC_TIMEOUTRXM);
-        // print slave state
-        // std::cout << "slave state is: " << ec_slave[1].state << std::endl;
-        // read_control_codes();
-      }
-
-    
+    /* end one valid process data to make outputs in slaves happy */
+    ec_send_processdata();
+    ec_receive_processdata(EC_TIMEOUTRET);
+    // std::cout << "Write control code: " << std::hex << control_code_ << std::endl;
+    if (pdo_transfer_active_)
+    {            
+      ec_SDOread(1, 0x6000, 0x01, TRUE, &rdl, &FT_data_, EC_TIMEOUTRXM);
+    }
 }
 
 void ati_sensor_lib::read_control_codes()
 {
-    int write_size  = 4;
+    int read_size  = 4;
     int control_cmd[2];
-    ec_SDOread(1, 0x7010, 0x01, FALSE, &write_size, &control_cmd, EC_TIMEOUTRXM);
+    ec_SDOread(1, 0x7010, 0x01, FALSE, &read_size, &control_cmd, EC_TIMEOUTRXM);
     std::cout <<std::hex  <<  "read control cmd is: " << control_cmd[0] << std::endl;
 }
 
 void ati_sensor_lib::stop_ethercat()
 {
     pdo_transfer_active_ = false;
+    ec_slave[0].state = EC_STATE_SAFE_OP;
+    /* request SAFE_OP state for all slaves */
+    ec_writestate(0);
+    /* wait for all slaves to reach state */
+    ec_statecheck(0, EC_STATE_SAFE_OP,  EC_TIMEOUTSTATE);
+    ec_slave[0].state = EC_STATE_PRE_OP;
+    /* request SAFE_OP state for all slaves */
+    ec_writestate(0);
+    /* wait for all slaves to reach state */
+    ec_statecheck(0, EC_STATE_PRE_OP,  EC_TIMEOUTSTATE);
+
     ec_slave[0].state = EC_STATE_INIT;
     ec_writestate(0);
-
-    /* stop SOEM, close socket */
+    ec_statecheck(0, EC_STATE_INIT,  EC_TIMEOUTSTATE);
+    
     ec_close();
-
-    thread_statecheck_.join();
     std::cout << "Ethercat stopped." << std::endl;
 }
 
 
 void ati_sensor_lib::start_ethercheck()
 {
-    // thread_write_ = std::thread(&ati_sensor_lib::ati_write, this);
-    // thread_statecheck_ = std::thread(&ati_sensor_lib::ecat_statecheck, this);
+    thread_statecheck_ = std::thread(&ati_sensor_lib::ecat_statecheck, this);
 }
 
 void ati_sensor_lib::ecat_statecheck()
 {
   int slave;
   uint8 currentgroup = 0;
+  
 
   while (true)
   {
@@ -336,32 +304,3 @@ void ati_sensor_lib::ecat_statecheck()
   }
     
 } // namespace ati_sensor
-
-
-
-
-
-// int main(int argc, char const *argv[])
-// {
-//     ati_sensor::ati_sensor_lib test_lib;
-//     if  (!test_lib.ati_setup(argv[1])){
-//       std::cout << COUT_RED << "ERROR : Ethercat setup failed." << COUT_RESET << std::endl;
-//       return -1;
-//     }
-//     test_lib.start_ethercheck();
-//     std::cout << "Start reading" << std::endl;
-//     while (true)
-//     {
-//         test_lib.ati_write(); 
-//         int* data = test_lib.ati_read();
-//         std::cout << "FT_data_ " << (double)data[0]/1000000.0 
-//                         << " " << (double)data[1]/1000000.0 
-//                         << " " << (double)data[2]/1000000.0 
-//                         << " " << (double)data[3]/1000000.0 
-//                         << " " << (double)data[4]/1000000.0 
-//                         << " " << (double)data[5]/1000000.0 << std::endl;
-//         osal_usleep(2000);
-//     }
-//     test_lib.stop_ethercat();
-//     return 0;
-// }

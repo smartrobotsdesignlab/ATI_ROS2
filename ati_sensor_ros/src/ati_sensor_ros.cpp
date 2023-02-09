@@ -8,6 +8,13 @@ namespace ati_sensor
         ros_init();
         sensor_init();
     }
+    ati_sensor_ros::~ati_sensor_ros()
+    {
+        RCLCPP_INFO(this->get_logger(),"ATI Sensor ROS Node Stopped");
+        ati_sensor_->stop_ethercat();
+        // loop_thread_.join();
+        std::cout << "ATI Sensor ROS Node Stopped" << std::endl;
+    }
 
     void ati_sensor_ros::ros_init()
     {
@@ -17,13 +24,17 @@ namespace ati_sensor
         {
             RCLCPP_ERROR(this->get_logger(), "Failed to get ether_name parameter");
         }
-        this->declare_parameter("update_rate", 200);
+        this->declare_parameter("update_rate", 500);
         if (!this->get_parameter("update_rate", update_rate_))
         {
             RCLCPP_ERROR(this->get_logger(), "Failed to get update_rate parameter");
         }
 
         ati_sensor_pub_ = this->create_publisher<geometry_msgs::msg::WrenchStamped>("ft_sensor_wrench", 10);
+
+        // srvs
+        set_bias_srv_ = this->create_service<std_srvs::srv::SetBool>("set_bias", std::bind(&ati_sensor_ros::set_bias_cb, this, std::placeholders::_1, std::placeholders::_2));
+        clear_bias_srv_ = this->create_service<std_srvs::srv::SetBool>("clear_bias", std::bind(&ati_sensor_ros::clear_bias_cb, this, std::placeholders::_1, std::placeholders::_2));
         RCLCPP_INFO(this->get_logger(),"ATI Sensor ROS Node Initialized");
     }
 
@@ -32,11 +43,33 @@ namespace ati_sensor
         // sensor init
         ati_sensor_.reset(new ati_sensor::ati_sensor_lib());
         ati_sensor_->ati_setup(ether_name_);
+        ati_sensor_->show_ati_infomation();
 
         ati_sensor_->start_ethercheck();
 
         loop_thread_ = std::thread(&ati_sensor_ros::run, this);
     }
+
+    // set bias call back function
+    bool ati_sensor_ros::set_bias_cb(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+                         std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+    {
+        ati_sensor_->set_bias(request->data);
+
+        response->success = true;
+        return true;
+    }
+
+    // clear bias call back function
+    bool ati_sensor_ros::clear_bias_cb(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+                         std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+    {
+        ati_sensor_->clear_bias(request->data);
+
+        response->success = true;
+        return true;
+    }
+
 
 
     void ati_sensor_ros::run()
@@ -46,12 +79,16 @@ namespace ati_sensor
 
         ati_sensor_msg.header.frame_id = "ati_sensor";
         auto loop_rate = std::chrono::milliseconds(1000/ update_rate_);
+        
         RCLCPP_INFO(this->get_logger(),"ATI Sensor ROS Node Running");
         while (rclcpp::ok())
         {
             auto start_time = std::chrono::high_resolution_clock::now();
+            // rclcpp::Time now = this->now();
             ati_sensor_->ati_write();
-            ati_sensor_msg.header.stamp = this->now();
+            // rclcpp::Duration duration_t = this->now() - now;
+            // RCLCPP_INFO(this->get_logger(),"duration: %f", duration_t.seconds());
+            // ati_sensor_msg.header.stamp = this->now();
             ati_sensor_msg.wrench.force.x = ati_sensor_->get_fx();
             ati_sensor_msg.wrench.force.y = ati_sensor_->get_fy();
             ati_sensor_msg.wrench.force.z = ati_sensor_->get_fz();
@@ -66,10 +103,10 @@ namespace ati_sensor
             {
                 std::this_thread::sleep_for(loop_rate - duration);
             }
-            osal_usleep(2000);
+            // osal_usleep(2000);
         }
         // stop sensor
-        ati_sensor_->stop_ethercat();
+        // ati_sensor_->stop_ethercat();
     }
 } // namespace ati_sensor
 

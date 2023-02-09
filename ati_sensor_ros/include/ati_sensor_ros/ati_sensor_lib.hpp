@@ -28,6 +28,12 @@ using std::placeholders::_1;
 namespace ati_sensor
 {
 
+// force units in index 0x2021 subindex 2x2f
+static const std::vector<std::string> FORCE_UNITS = {"lfb", "N", "Klbf", "KN", "Kg"};
+
+// torque units in index 0x2021 subindex 2x30
+static const std::vector<std::string> TORQUE_UNITS = {"lbf*in", "lbf-ft", "Nm", "Nmm", "Kgf-cm", "kNm"};
+
 class ati_sensor_lib
 {
 public:
@@ -35,14 +41,16 @@ public:
     bool ati_setup(std::string ether_name);
     // stop
     void stop_ethercat();
-
     void start_ethercheck();
-
-    void zero_reset();
+    void show_ati_infomation();
 
     // read and write
     int* ati_read();
     void ati_write();
+
+    // set bias
+    void set_bias(bool cmd);
+    void clear_bias(bool cmd);
 
     double get_fx();
     double get_fy();
@@ -61,14 +69,12 @@ private:
     int FT_data_[6];
 
     // state
-    std::thread thread_statecheck_, thread_write_;
+    std::thread thread_statecheck_;
     bool pdo_transfer_active_;
     volatile int expectedWKC_;
     volatile int wkc_;
 
-    bool write_service_;
     uint32_t control_code_;
-
 };
     
 
