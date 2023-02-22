@@ -19,7 +19,7 @@ namespace ati_sensor
     void ati_sensor_ros::ros_init()
     {
         // ros init
-        this->declare_parameter("ether_name", "enx2c16dba732f8");
+        this->declare_parameter("ether_name", "enp3s0f1");
         if (!this->get_parameter("ether_name", ether_name_))
         {
             RCLCPP_ERROR(this->get_logger(), "Failed to get ether_name parameter");
@@ -88,7 +88,7 @@ namespace ati_sensor
             ati_sensor_->ati_write();
             // rclcpp::Duration duration_t = this->now() - now;
             // RCLCPP_INFO(this->get_logger(),"duration: %f", duration_t.seconds());
-            // ati_sensor_msg.header.stamp = this->now();
+            ati_sensor_msg.header.stamp = this->now();
             ati_sensor_msg.wrench.force.x = ati_sensor_->get_fx();
             ati_sensor_msg.wrench.force.y = ati_sensor_->get_fy();
             ati_sensor_msg.wrench.force.z = ati_sensor_->get_fz();
