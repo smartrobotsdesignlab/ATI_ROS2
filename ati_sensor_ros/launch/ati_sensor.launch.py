@@ -39,7 +39,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "ether_name_L",
-            default_value="enp3s0f0",
+            default_value="enp9s0",
             description='Package with the controller\'s configuration in "config" folder. \
         Usually the argument is not set, it enables use of a custom setup.',
         )
@@ -47,7 +47,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "ether_name_R",
-            default_value="enp3s0f1",
+            default_value="enp7s0",
             description='Package with the controller\'s configuration in "config" folder. \
         Usually the argument is not set, it enables use of a custom setup.',
         )
@@ -74,7 +74,7 @@ def generate_launch_description():
     ati_node_L = Node(
         package="ati_sensor_ros",
         executable="ati_sensor_ros",
-        namespace="left",
+        namespace="left_cartesian_compliance_controller",
         parameters=[update_rate_param, ether_name_L_param],
         condition=IfCondition(PythonExpression(["'", side, "' == 'left'" , " or '", side, "' == 'dual'"])),
         output="both",
@@ -82,7 +82,7 @@ def generate_launch_description():
     ati_node_R = Node(
         package="ati_sensor_ros",
         executable="ati_sensor_ros",
-        namespace="right",
+        namespace="right_cartesian_compliance_controller",
         parameters=[update_rate_param, ether_name_R_param],
         condition=IfCondition(PythonExpression(["'", side, "' == 'right'" , " or '", side, "' == 'dual'"])),
         output="both",

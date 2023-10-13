@@ -9,7 +9,13 @@ bool ati_sensor_lib::ati_setup(std::string ether_name)
   pdo_transfer_active_ = false;
   
   // Initial control code && I/O map config
-  control_code_ = 0x1050;
+  /*
+   * 12-15: 0=487Hz, 1=975Hz, 2=1990Hz, 3=3900Hz
+   * 8 -11: Calibration 0 and Calibration 1
+   * 4 - 7: 0=No filter, 1-8 Reference pp26.
+   * 0 - 3: Clear and Set bias
+  */
+  control_code_ = 0x0080; // 
   ec_SDOwrite(1, 0x7010, 0x01, FALSE, sizeof(control_code_), &control_code_, EC_TIMEOUTRXM);
   
 

@@ -19,6 +19,7 @@ namespace ati_sensor
     void ati_sensor_ros::ros_init()
     {
         // ros init
+        reset_bias_ = false;
         this->declare_parameter("ether_name", "enp3s0f1");
         if (!this->get_parameter("ether_name", ether_name_))
         {
@@ -50,11 +51,22 @@ namespace ati_sensor
         loop_thread_ = std::thread(&ati_sensor_ros::run, this);
     }
 
+    void ati_sensor_ros::resume()
+    {
+        reset_bias_ = false;
+        resume_timer_.reset();
+    }
+
     // set bias call back function
     bool ati_sensor_ros::set_bias_cb(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
                          std::shared_ptr<std_srvs::srv::SetBool::Response> response)
     {
         ati_sensor_->set_bias(request->data);
+        if (!request->data)
+        {
+            resume_timer_ = this->create_wall_timer(std::chrono::milliseconds(100), std::bind(&ati_sensor_ros::resume, this));
+        }
+        
 
         response->success = true;
         return true;
@@ -64,6 +76,12 @@ namespace ati_sensor
     bool ati_sensor_ros::clear_bias_cb(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
                          std::shared_ptr<std_srvs::srv::SetBool::Response> response)
     {
+        // Start to clear bias
+        if (request->data) 
+        {
+            reset_bias_ = true;
+        }
+        
         ati_sensor_->clear_bias(request->data);
 
         response->success = true;
@@ -95,8 +113,11 @@ namespace ati_sensor
             ati_sensor_msg.wrench.torque.x = ati_sensor_->get_tx();
             ati_sensor_msg.wrench.torque.y = ati_sensor_->get_ty();
             ati_sensor_msg.wrench.torque.z = ati_sensor_->get_tz();
-
-            ati_sensor_pub_->publish(ati_sensor_msg);
+            if (!reset_bias_)
+            {
+                ati_sensor_pub_->publish(ati_sensor_msg);
+            }
+            
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
             if (duration < loop_rate)

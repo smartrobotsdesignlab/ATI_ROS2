@@ -36,6 +36,8 @@ namespace ati_sensor
         bool clear_bias_cb(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
                            std::shared_ptr<std_srvs::srv::SetBool::Response> response);
 
+        void resume(); // for timer call back function
+
         /* variables */
         // ros node
         rclcpp::Publisher<geometry_msgs::msg::WrenchStamped>::SharedPtr ati_sensor_pub_;
@@ -43,6 +45,11 @@ namespace ati_sensor
         std::string ether_name_;
         std::shared_ptr<ati_sensor::ati_sensor_lib> ati_sensor_;
         uint update_rate_;
+
+        // create a timer to resume the sensor
+        bool reset_bias_;
+        rclcpp::TimerBase::SharedPtr resume_timer_;
+        
 
         // srvs
         rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr set_bias_srv_; // 1 set bias against current load; 0 use last bias
